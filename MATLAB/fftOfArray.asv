@@ -1,0 +1,7 @@
+function [outputArr] = fftOfArray(inputArr)
+%   fftOfArray
+%   outputs the avg fft result of the input IRs
+% use for loudspeaker? idk if we avg them
+for i = 0:length(inputArr)
+    outputArr.add
+end

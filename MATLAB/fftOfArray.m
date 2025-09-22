@@ -1,5 +1,4 @@
-function [outputArr] = fftOfArray(inputArr)
+%function [outputAvg] = fftOfArray(inputArr)
 %   fftOfArray
-%   outputs the fft result of the input IRs as FR
-for 
-end
+%   outputs the avg fft result of the input IRs
+%   use for loudspeaker? idk if we avg them
