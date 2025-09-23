@@ -10,7 +10,6 @@ halvedFR = FR(1:half);
 
 %converting to dB
 outputDB = 20*log10(abs(halvedFR));
-outputDB = outputDB - max(outputDB);
 
 nyquist = half;
 
