@@ -1,5 +1,5 @@
-[lectureIR, fs] = audioread("./../Recordings/Lecture theater/Lecture Theater Sep 20 2m-48k.wav");
-[lectureBackIR, fs2] = audioread("./../Recordings/Lecture theater/Lecture Theater Sep 20 back 2m-48k.wav");
+[lectureIR, fs] = audioread("./../Recordings/Staff Room/staff room 2m loc 1-48k.wav");
+[lectureBackIR, fs2] = audioread("./../Recordings/Staff Room/staff room 2m loc 2-48k.wav");
 [loudspeakerIR, fs3] = audioread("./../Recordings/Lab/Aug 22-48k.wav");
 
 [frontLectureFR, half1] = impulseToDB(lectureIR);

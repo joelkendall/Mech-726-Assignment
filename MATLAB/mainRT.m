@@ -1,44 +1,41 @@
 clc; clear;
 
-%% ===== Setup =====
-addpath('filterbanks');   % contains oct3dsgn.m
+addpath('filterbanks'); 
 
-% Load IRs for Positions A & B (mono)
-[irA, fsA] = audioread("./../Recordings/Lecture theater/Lecture Theater Sep 20 2m-48k.wav");
-[irB, fsB] = audioread("./../Recordings/Lecture theater/Lecture Theater Sep 20 back 2m-48k.wav");
+[irA, fsA] = audioread("./../Recordings/Staff Room/staff room 2m loc 1-48k.wav");
+[irB, fsB] = audioread("./../Recordings/Staff Room/staff room 2m loc 2-48k.wav");
 assert(fsA==fsB, 'Sample rates must match'); fs = fsA;
 irA = mean(irA,2); irB = mean(irB,2);
 
-% 1/3-octave centres: 250–4000 Hz
+% 1/3-octave bands 250–4kHz
 bands = [250 315 400 500 630 800 1000 1250 1600 2000 2500 3150 4000];
 
 % (Optional) trim to direct sound to improve SNR before EDC
 irA = trim_to_direct(irA);
 irB = trim_to_direct(irB);
 
-%% ===== Compute bandwise EDT & T20 using oct3dsgn + filter =====
+% EDT & T20 calculations per 1/3 oct band
 [EDT_A, T20_A, R2_EDT_A, R2_T20_A] = rt_bands_oct3(irA, fs, bands);
 [EDT_B, T20_B, R2_EDT_B, R2_T20_B] = rt_bands_oct3(irB, fs, bands);
 
-%% ===== Plot: EDT & T20 vs frequency (both positions on one graph) =====
+% plotting
 figure;
-semilogx(bands, EDT_A, '-o', 'LineWidth', 1.6); hold on;
-semilogx(bands, T20_A, '-x', 'LineWidth', 1.6);
-semilogx(bands, EDT_B, '--o', 'LineWidth', 1.6);
-semilogx(bands, T20_B, '--x', 'LineWidth', 1.6);
+subplot(1, 2, 1);
+semilogx(bands, EDT_A, 'LineWidth', 1.6); hold on;
+semilogx(bands, T20_A, 'LineWidth', 1.6);
 grid on; xlim([250 4000]);
 xlabel('Centre frequency (Hz)'); ylabel('Reverberation time (s)');
-title('EDT & T20 per 1/3-octave band (Positions A & B)');
-legend('A: EDT','A: T20','B: EDT','B: T20','Location','best');
+title('EDT & T20 per 1/3-octave band (Position A)');
+legend('EDT','T20','Location','best');
 
-%% ===== (Optional) sanity check: show filter response for a band =====
-%{
-fc = 1000;
-[B,A] = oct3dsgn(fc, fs, 3);       % N=3 per manual’s suggestion
-fvtool(B, A, 'Fs', fs);            % inspect magnitude and poles/zeros
-%}
+subplot(1, 2, 2);
+semilogx(bands, EDT_B, 'LineWidth', 1.6); hold on;
+semilogx(bands, T20_B, 'LineWidth', 1.6);
+grid on; xlim([250 4000]);
+xlabel('Centre frequency (Hz)'); ylabel('Reverberation time (s)');
+title('EDT & T20 per 1/3-octave band (Position B, close to wall)');
+legend('EDT','T20','Location','best');
 
-%% ================= Helper functions =================
 function x = trim_to_direct(x)
     % keep a handful of samples before the absolute-peak (direct sound)
     [~,i0] = max(abs(x)); i0 = max(1, i0-10);
@@ -53,25 +50,24 @@ function [EDT, T20, R2_EDT, R2_T20] = rt_bands_oct3(h, fs, fcs)
     for k = 1:N
         fc = fcs(k);
 
-        % 1/3-oct band filter (per manual): B,A = oct3dsgn(fc,Fs,N); y = filter(B,A,x)
-        [B,A] = oct3dsgn(fc, fs, 3);          % start with order N=3 (manual)
-        y = filter(B, A, h);                  % use filter(), per slides
+        [B,A] = oct3dsgn(fc, fs, 3);          % N=3 only value with all poles in unit circle
+        y = filter(B, A, h);                  
 
-        % Schroeder EDC (manual Section "EDC Calculation")
+        % Calculating EDC
         e   = y.^2;
-        EDC = flipud(cumsum(flipud(e)));      % backward integration
-        EDC = EDC ./ max(EDC + eps);          % normalise to 0 dB at start
+        EDC = flipud(cumsum(flipud(e)));      
+        EDC = EDC ./ max(EDC + eps);          % normalising to 0 dB at start
         EDCdB = 10*log10(EDC + eps);
         t = (0:numel(y)-1).'/fs;
 
-        % --- EDT: 0 to -10 dB, extrapolate to -60 dB
+        % EDT
         [m1,b1,mask1,ok1] = linear_fit_db(t, EDCdB, [0 -10]);
         if ok1 && m1 < 0
             EDT(k)   = -60 / m1;
             R2_EDT(k)= rsq(EDCdB(mask1), m1*t(mask1)+b1);
         end
 
-        % --- T20: -5 to -25 dB, extrapolate to -60 dB
+        % T20
         [m2,b2,mask2,ok2] = linear_fit_db(t, EDCdB, [-5 -25]);
         if ok2 && m2 < 0
             T20(k)    = -60 / m2;            % = 3 * (-20/m2)
@@ -86,7 +82,7 @@ function [m,b,mask,ok] = linear_fit_db(t, ydb, range_dB)
     tt = t(mask); yy = ydb(mask);
     ok = numel(tt) >= 8;
     if ok
-        X = [tt, ones(size(tt))];       % slides: prepare X, Y then B = X\Y
+        X = [tt, ones(size(tt))];       
         B = X \ yy;                     % least squares (backslash)
         m = B(1); b = B(2);
     else
@@ -98,5 +94,5 @@ function R2 = rsq(y, yhat)
     ybar = mean(y);
     SSres = sum((y - yhat).^2);
     SStot = sum((y - ybar).^2);
-    R2 = max(0, 1 - SSres/max(eps,SStot));   % manual shows R^2 formula
+    R2 = max(0, 1 - SSres/max(eps,SStot));   
 end
